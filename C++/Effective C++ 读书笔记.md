@@ -95,3 +95,43 @@ class CLS()
 
 
 
+## 条款5：了解C++默默编写并调用哪些函数
+
+编译器默默声明：default构造函数、copy构造函数、copy assignment操作符、析构函数
+
+
+
+## 条款6：若不想使用编译器自动生成得函数，就该明确拒绝
+
+```c++
+class CLS{
+    public:
+    	CLS(const CLS&) = delete;
+    private:
+    	CLS& operator=(const CLS&);
+}
+```
+
+```c++
+class Uncopyable{
+	protected:
+    	Uncopyable(){}
+    	~Uncopyable(){}
+    private:
+    	Uncopyable(const Uncopyable&);
+    	Uncopyable& operator=(const Uncopyable&);
+}
+class CLS: private Uncopyable{
+    ...
+}
+```
+
+1. 声明阻止编译器自动生成，private阻止外部调用。
+2. C++11特性：delete关键词，阻止外部调用
+3. 继承Uncopyable阻止编译器生成版调用base class对应函数，因为他们是private得
+
+
+
+## 条款7：为多态基类声明virtual析构函数
+
+多态基类的析构函数应被申明为virtual，保证基类指针指向的子类对象能被正确释放。
