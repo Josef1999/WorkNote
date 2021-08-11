@@ -240,5 +240,271 @@ process(new CLS,priority());//可能先于shared_ptr构造函数前调用priorit
 
 
 
+## 条款18：让接口容易被正确使用，不易被误用
+
+1. 接口一致性
+2. 不要求用户必须记得做某事（如：释放对象）
 
 
+
+## 条款19：设计class犹如设计type
+
+1. 对象如何被创建销毁
+2. 对象的初始化和赋值有什么差别
+3. 对象如果被passed by value，意味着什么
+4. 什么是新type的合法值
+5. 新type所需的继承关系
+6. 新type需要什么样的转换
+7. 什么样的操作符和函数对新type是合理的
+8. 什么样的标准函数应该驳回
+9. 谁该取用新type的成员
+10. 什么是新type的未声明接口
+11. 新type有多一般化
+12. 真的需要一个新type吗
+
+
+
+## 条款20：宁以pass-by-reference-to-const替换pass-by-value
+
+1. pass-by-value调用构造函数，造成额外性能开销
+2. pass-by-reference-to-const在不修改对象的前提下，确保无额外性能开销
+3. pass-by-value会导致对象切割（派生类被转换为基类，未能正确表现多态）
+
+
+
+## 条款21：必须返回对象时，别妄想返回其reference
+
+1. 对象可能被提前销毁（local 变量）
+
+```c++
+inline const CLS operator *(const CLS& lhs, const CLS& rhs)
+{
+    return CLS(lhs.v*rhs.v);//此函数无法返回引用，必须返回新对象
+} 
+```
+
+
+
+## 条款22：将成员变量声明为private
+
+1. 保持一致性
+2. 精准控制成员变量的读写
+3. 封装，可随时改变接口下的具体实现
+4. public或protected成员变量若改变可能大范围破坏代码
+
+
+
+## 条款23：宁以non-member、non-friend替换member函数
+
+1. 更好的封装性（不增加能够访问class内private成分的函数数量）
+2. 更好的包裹弹性
+3. 更好的扩充性
+
+
+
+## 条款24：若所有参数皆需类型转换，请为此采用non-member函数
+
+
+
+## 条款25：考虑写出一个不抛异常的swap函数
+
+1. stl默认的swap函数在某些情况下非最优解（pimpl技术实现的类），需特化swap
+
+   ```c++
+   namespace std{
+       template<>//全特化模板
+       void swap<CLS>(CLS &A, CLS &B)
+       {
+           swap(A.pimpl,B.pimpl);
+       }
+   }
+   ```
+
+2. 默认swap效率不足时，尝试如下选项：
+   1. 提供一个public swap成员函数（no exception）
+   2. 在class或template所在命名空间提供一个non-member swap，令它调用上述swap成员函数
+   3. 如果在编写class（非class template），为class特化std::swap，令它调用上述swap成员函数
+
+
+
+## 条款26：尽可能延后变量定义式的出现时间
+
+1. 变量的构造与析构皆有开销，若变量未被使用则使得这些开销无意义（如：因异常提前退出）
+
+2. ```c++
+   //变量定义于循环外
+   Widget w;
+   for(int i=0;i<n;i++)
+       w=...;
+   
+   //变量定义于循环内
+   for(int i=0;i<n;i++)
+       Widget w=...;
+   
+   ```
+
+   循环外：1 构造 + 1 析构 + n 赋值
+
+   循环内：n 构造 + n 析构
+
+   若赋值成本<构造+析构成本，且性能高度敏感，选择变量定义于循环外
+
+
+
+## 条款27：尽量少做转型动作
+
+1. 转型具有风险，可能引入不安全、无意义的操作
+
+2. 单一对象可能拥有一个以上的地址（基类指针指向派生类指针）【多发于多重继承，偶发于单一继承】
+
+   ```c++
+   class B1
+   {
+   	int i;
+   };
+   
+   class B2
+   {
+   	int i;
+   };
+   
+   class D : public B1, public B2
+   {
+   	int i;
+   };
+   
+   int main()
+   {
+   	D d;
+   
+   	D* pD = &d;
+   	B2* pB2 = &d;
+   
+   	cout << pD << endl;
+   	cout << pB2 << endl;
+   
+   	return 0;
+   }
+   ```
+
+3. dynamic_cast 向下转换性能消耗巨大，减少使用
+
+
+
+## 条款28：避免使用handles指向对象内部成分
+
+1. 破坏封装性
+2. 增加用户错误操作的可能性
+
+
+
+## 条款29：为“异常安全”而努力是值得的
+
+1. 异常安全：
+
+   - 不泄露任何资源
+
+   - 不允许数据败坏
+
+2. 异常安全函数提供以下三个保证之一：
+
+   - 基本承诺：若异常抛出，程序内任何事物仍处于有效状态，没有对象或数据结构因此败坏，然而程序的现实状态可能不可预料
+   - 强烈保证：异常抛出后程序状态不改变，函数成功就是完全成功，函数失败就恢复至调用前状态
+   - 不抛掷保证：承诺绝不抛出异常
+
+3. “强烈保证”往往能够以copy-and-swap实现，但不一定具有现实意义（额外开销）
+
+4. 异常安全保证等级遵循水桶原则（取所有调用函数的最低等级）
+
+
+
+## 条款30：透彻了解inlining的里里外外
+
+1. inline≈宏函数（在调用处以函数本体替换之），可能增大目标代码大小【代码膨胀】，造成程序体积太大从而降低缓存命中率
+2. 将inline用于小型、频繁调用的函数身上，提升效率且减少代码膨胀的影响
+3. templates是否需要inline根据实际需求确定，不盲目inline头文件内的templates
+4. inline函数通常被置于头文件内，大部分情况下在编译过程中进行inlining
+5. 复杂的inline函数可能被编译器拒绝（若无法inline则给出警告信息）
+
+
+
+## 条款31：将文件间的编译依存关系降至最低
+
+1. 以“声明的依存性”替换“定义的依存性”
+
+   ```c++
+   class Date;
+   class Address;
+   class PersonImpl;
+   
+   class Person{
+   public:
+       Person(const Date& birthday, const Address& addr);
+   private:
+       std::shared_ptr<PersonImpl> pImpl;
+   }
+   ```
+
+2. 使用pImpl技术
+
+
+
+## 条款32：确定你的public继承塑模出is-a关系
+
+1. 基类比派生类更具一般化的概念，派生类比基类更具特殊化的概念（所有可施行于基类的皆可施行于派生类）
+
+
+
+## 条款33：避免遮掩继承而来的名称
+
+1. 派生类继承基类重载函数
+
+   ```c++
+   
+   class B
+   {
+   public:
+   	virtual void mf1() = 0;
+   	virtual void mf1(int a);
+   	void mf3();
+   	void mf3(int a);
+   };
+   
+   
+   class D : public B
+   {
+   public:
+   	using B::mf1;
+   	using B::mf3;
+   	virtual void mf1();
+   	void mf3();
+   };
+   ```
+
+2. 派生类选择继承基类重载函数：转交函数
+
+   ```c++
+   class B
+   {
+   public:
+   	virtual void mf1() = 0;
+   	virtual void mf1(int a);
+   };
+   
+   
+   class D : private B
+   {
+   public:
+   	virtual void mf1()
+       {
+           B::mf1();
+       }
+   };
+   ```
+
+
+
+## 条款34：区分接口继承和实现继承
+
+1. public继承分为两部分：接口继承、实现继承
+2. 
