@@ -239,7 +239,6 @@ process(new CLS,priority());//可能先于shared_ptr构造函数前调用priorit
 ```
 
 
-
 ## 条款18：让接口容易被正确使用，不易被误用
 
 1. 接口一致性
@@ -508,3 +507,80 @@ inline const CLS operator *(const CLS& lhs, const CLS& rhs)
 
 1. public继承分为两部分：接口继承、实现继承
 2. 
+
+## 条款40：明智而审慎地使用多重继承
+
+多重继承的问题：菱形继承（可用virtual继承解决多基类，但造成额外空间&性能开销）；不同class内的相同名称、
+
+多重继承应用场景：
+
+```c++
+class IPerson{...}//含纯虚函数的接口类
+class PersonInfo{...}//有若干可复用函数的类
+class CPerson: public IPerson,private PersonInfo{...}//pulbic继承接口，private继承实现
+```
+
+virutal继承建议：
+
+1. 尽可能不使用virtual继承
+2. 尽可能避免在virtual base class中存放数据
+
+
+
+# 7.模板与泛型编程
+
+## 条款41：了解隐式接口和编译器多态
+
+```c++
+//假定w.normalize()为虚函数
+void func(Widget &w)
+{
+    w.normalize();//显式接口，运行期多态
+}
+```
+
+```c++
+//T类型需含有normalize接口
+//类似python
+//def func(ins):
+//	ins.normalize()
+template<typename T>
+void func(T &w)
+{
+    w.normalize();//隐式接口，编译期多态
+}
+```
+
+编译器多态vs运行期多态 ≈ 调用哪个重载函数vs绑定哪个virtual函数
+
+显式接口vs隐式接口 ≈ 先实现接口再调用（函数适应类）vs先调用接口再实现（类适应函数）
+
+
+
+## 条款42：了解typename的双重意义
+
+```c++
+template<class T>class Widget;
+template<typename T>class Widget;
+//大部分情况下等价
+template<typename T>
+void func(const T& var)
+{
+    T::const_iterator *iter;//嵌套从属名称
+    int num = 0;//非从属名称
+}
+//嵌套从属名称可能导致解析困难（二义性）
+//例：T含有命名为const_iterator的static变量，存在名为iter的全局变量
+//解析器默认嵌套从属名称不是类型，可用typename显式标注：
+//typename T::const_iterator *iter;
+```
+
+从属名称（dependent names）：template中出现的依赖于某个template参数的名称
+
+嵌套从属名称：在class内呈嵌套状的从属名称
+
+非从属名称：不依赖任何template参数的名称
+
+
+
+
