@@ -1,5 +1,7 @@
 # Effective C++ 读书笔记
 
+# 1.让自己习惯C++
+
 ## 条款1：视C++为一个语言联邦
 
 过程procedural，面向对象OOP，函数functional，泛型generic，元编程metaprogramming
@@ -72,6 +74,8 @@ A*B = C; //在A*B的成果上调用operator=，若非const则通过编译
 
 
 
+# 
+
 ## 条款4：确定对象被使用前已先被初始化
 
 #### member initialization list 类内成员初始化
@@ -94,6 +98,8 @@ class CLS()
 2. 泛用，可为const、引用初始化
 
 
+
+# 2.构造/析构/赋值运算
 
 ## 条款5：了解C++默默编写并调用哪些函数
 
@@ -193,7 +199,7 @@ class CLS()
 
 copy构造函数应确保copy所有对象内成员变量&所有base class成员变量（调用对应构造函数）
 
-
+# 3.资源管理
 
 ## 条款13：以对象管理资源
 
@@ -238,6 +244,7 @@ void process(shared_ptr<CLS> pc, int pri);
 process(new CLS,priority());//可能先于shared_ptr构造函数前调用priority（取决于编译器），存在资源泄露可能
 ```
 
+# 4.设计与声明
 
 ## 条款18：让接口容易被正确使用，不易被误用
 
@@ -324,7 +331,7 @@ inline const CLS operator *(const CLS& lhs, const CLS& rhs)
    2. 在class或template所在命名空间提供一个non-member swap，令它调用上述swap成员函数
    3. 如果在编写class（非class template），为class特化std::swap，令它调用上述swap成员函数
 
-
+# 5.实现
 
 ## 条款26：尽可能延后变量定义式的出现时间
 
@@ -446,7 +453,7 @@ inline const CLS operator *(const CLS& lhs, const CLS& rhs)
 
 2. 使用pImpl技术
 
-
+# 6.继承与面向对象设计
 
 ## 条款32：确定你的public继承塑模出is-a关系
 
@@ -580,7 +587,6 @@ void func(const T& var)
 嵌套从属名称：在class内呈嵌套状的从属名称
 
 非从属名称：不依赖任何template参数的名称
-
 
 
 
