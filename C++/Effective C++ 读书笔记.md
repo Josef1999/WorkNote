@@ -513,7 +513,47 @@ inline const CLS operator *(const CLS& lhs, const CLS& rhs)
 ## 条款34：区分接口继承和实现继承
 
 1. public继承分为两部分：接口继承、实现继承
-2. 
+2. pure virtual函数只含接口继承
+
+
+
+## 条款35：考虑virtual函数以外的其他选择
+
+NVI(non-virtual interface),函数指针成员变量
+
+
+
+## 条款36：绝不重新定义继承而来的non-virtual函数
+
+1. 破坏多态性（低层屏蔽高层，多态正确性受影响）
+
+
+
+## 条款37：绝不重新定义继承而来的缺省参数值
+
+1. 缺省参数值是静态绑定，virtual函数是动态绑定（实际运行结果会出乎意料）
+
+
+
+## 条款38：通过复合塑模出has-a或“根据某物实现出”
+
+1. 区分is-a与“根据某物实现出”（is inplemented in terms of）
+
+```c++
+class SET: public std::list<int>{} //is a
+
+class SET:{
+    private:
+    	std::list<int> l;
+}//is inplemented in terms of
+```
+
+
+
+## 条款39：明智而审慎地使用private继承
+
+1. private继承意味着只有实现部分被继承，接口部分被略去（无法访问）
+2. priavte继承意味is-inplemented-in-terms-of
 
 ## 条款40：明智而审慎地使用多重继承
 
