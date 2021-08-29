@@ -630,3 +630,75 @@ void func(const T& var)
 
 
 
+## 条款43：学习处理模板化基类内的名称
+
+1. 可在derived class templates内通过this指针指涉base class templates内的成员名称或使用using
+
+
+
+## 条款44：将与参数无关的代码抽离templates
+
+1. templates生成多个classes和多个函数，所以任何template代码都不该与某个造成膨胀的template参数产生相依关系
+2. 因非类型模板参数而造成的代码膨胀，往往可消除，以函数参数或class成员变量替换template参数
+
+
+
+## 条款45：运用成员函数模板接受所有兼容类型
+
+1. 借用编译器已有限制实现需求（希望自定义智能指针能正确表现多态）
+
+## 条款46：需要类型转换时请为模板定义非成员函数
+
+todo
+
+
+
+## 条款47：请使用traits classes表现类型信息
+
+1. traits classes使得“类型相关信息”在编译器可用
+2. 整合重载后，traits classes有可能在编译器对类型执行if else测试
+
+
+
+## 条款48：认识template元编程
+
+1. 模板元编程可将工作由运行期移至编译器，实现早期错误检测和更高的执行效率
+
+
+
+# 8.定制new和delete
+
+## 条款49：了解new-handler的行为
+
+1. operator new抛出异常以反映一个未获满足的内存需求之前，会先调用一个客户指定的错误处理函数(new-handler)
+
+```c++
+void outofMem()
+{...}//new无法满足内存申请时，会不断调用new-handler，可利用此特性
+int main()
+{
+    std::set_new_handler(outofMem);
+    int * a= new int[100000000000000];
+}
+```
+
+
+
+## 条款50：了解new和delete的合理替换时机
+
+1. 常见的理由：检测运用上的错误；强化效能；收集使用上的统计数据
+
+
+
+## 条款51：编写new和delete时需固守常规
+
+1. operator new应该内含一个无穷循环，并在其中尝试分配内存，如果无法满足内存需求就调用new-handler，且能处理0bytes申请。Class专属版本则还应该处理“比正确大小更大的申请”
+2. operator delete应该在收到null指针时不做任何事。Class专属版本则还应该处理“比正确大小更大的申请”
+
+
+
+## 条款52：写了placement new也要写placement delete
+
+1. 内存分配成功后如果构造函数抛出异常，系统将取消new的分配并恢复旧观，系统将寻找某个参数个数与类型都与new相同的delete进行调用，若找不到则什么都不做。（内存泄漏）
+2. 声明placement new和placement delete后，请注意不要无意识遮掩了正常版本
+
