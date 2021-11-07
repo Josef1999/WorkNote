@@ -408,3 +408,243 @@ const size_t Counted<Printer>::maxObjects = 10;
 
 ### 条款29：引用计数
 
+- shared_ptr
+
+
+
+### 条款30：代理类
+
+- 可用于区分数组操作的读写
+
+
+
+### 条款31：让函数根据一个以上的对象来决定怎么虚拟
+
+- 用虚函数加RTTI
+  - 容易实现，不安全（编译器不报错），扩展性差
+
+```c++
+class GameObject{
+public:
+    virtual void collide(GameObject& otherObject) = 0;
+    ...
+};
+class SpaceShip:public GameObject{
+public:
+    virtual void collide(GameObject& otherObject);
+    ...
+};
+
+class CollisionWithUnknownObject{
+public:
+    CollisionWithUnknownObject(GameObject& whatWehit);
+    ...
+};
+void SpaceShip::collide(GameObject& otherObject)
+{
+    const type_info& objectType = typeid(otherObject);
+    if(objectType == typeid(SpaceShip))
+    {
+        SpaceShip& ss = static_cast<SpaceShip&>(otherObject);
+        process a SpaceShip-SpaceShip collision;
+    }
+    else if(objectType == typeid(SpaceStation))
+    {
+        SpaceStation& ss = static_cast<SpaceStation&>(otherObject);
+        process a SpaceShip-SpaceStation collision;
+    }
+    else if(objectType == typeid(Asteroid))
+    {
+        Asteroid& a = static_cast<Asteriod&>(otherObject);
+        process a SpaceShip-Asteroid collision;
+    }
+    else
+    {
+        throw CollisionWithUnknownObject(otherObject);
+    }
+}
+```
+
+
+
+- 只用虚函数
+  - 抽象类中重载纯虚函数，安全，扩展性差
+
+```c++
+class SpaceShip;
+class SpaceStation;
+class Asteroid;
+class GameObject{
+public:
+    virtual void collide(GameObject& otherObject) = 0;
+    virtual void collide(SpaceShip& otherObject) = 0;
+    virtual void collide(SpaceStation& otherObject) = 0;
+    virtual void collide(Asteroid& otherObject) = 0;
+    ...
+};
+class SpaceShip:public GameObject{
+public:
+    virtual void collide(GameObject& otherObject);
+    virtual void collide(SpaceShip& otherObject);
+    virtual void collide(SpaceStation& otherObject);
+    virtual void collide(Asteroid& otherObject);
+    ...
+};
+
+void SpaceShip::collide(GameObject& otherObject)
+{
+    otherObject.collide(*this);
+}
+void SpaceShip::collide(SpaceShip& otherObject)
+{
+    process a SpaceShip-SpaceShip collision;
+}
+void SpaceShip::collide(SpaceStation& otherObject)
+{
+    process a SpaceShip-SpaceStation collision;
+}
+void SpaceShip::collide(Asteroid& otherObject)
+{
+    process a SpaceShip-Asteroid collision;
+}
+```
+
+- 模拟虚函数表
+
+```C++
+class GameObject {
+public:
+    virtual void collide(GameObject& otherObject) = 0;
+    ...
+};
+class SpaceShip: public GameObject {
+public:
+    virtual void collide(GameObject& otherObject);
+    virtual void hitSpaceShip(SpaceShip& otherObject);
+    virtual void hitSpaceStation(SpaceStation& otherObject);
+    virtual void hitAsteroid(Asteroid& otherobject);
+    ...
+private:
+    typedef void (SpaceShip::*HitFunctionPtr)(GameObject&);
+    //碰撞处理函数指针
+    static HitFunctionPtr lookup(const GameObject& whatWeHit);
+    ...
+};
+void SpaceShip::hitSpaceShip(SpaceShip& otherObject)
+{
+    process a SpaceShip-SpaceShip collision;
+}
+void SpaceShip::hitSpaceStation(SpaceStation& otherObject)
+{
+    process a SpaceShip-SpaceStation collision;
+}
+void SpaceShip::hitAsteroid(Asteroid& otherObject)
+{
+    process a SpaceShip-Asteroid collision;
+}
+SpaceShip::HitFunctionPtr SpaceShip::lookup(const GameObject& whatWeHit)
+{
+    static HitMap collisionMap;
+    //查找
+    HitMap::iterator mapEntry=collisionMap.find(typeid(whatWeHit).name());
+    //未知碰撞
+    if (mapEntry == collisionMap.end()) 
+        return 0;
+    return (*mapEntry).second;
+}
+void SpaceShip::collide(GameObject& otherObject)
+{
+    HitFunctionPtr hfp =lookup(otherObject);
+    if (hfp) { 
+        (this->*hfp)(otherObject); // call it
+    }
+    //处理未知碰撞
+    else {
+        throw CollisionWithUnknownObject(otherObject);
+    }
+}
+```
+
+- 使用"非成员(non-member)函数"
+
+```c++
+#include "SpaceShip.h"
+#include "SpaceStation.h"
+#include "Asteroid.h"
+//使用匿名命名空间使得名称只对本单元可见,作用等同于将名称声明为static
+namespace {
+    void shipAsteroid(GameObject& spaceShip,GameObject& asteroid);
+    void shipStation(GameObject& spaceShip,GameObject& spaceStation);
+    void asteroidStation(GameObject& asteroid,GameObject& spaceStation);
+    ...
+    //对称碰撞
+    void asteroidShip(GameObject& asteroid,GameObject& spaceShip){ shipAsteroid(spaceShip, asteroid); }
+    void stationShip(GameObject& spaceStation,GameObject& spaceShip){ shipStation(spaceShip, spaceStation); }
+    void stationAsteroid(GameObject& spaceStation,GameObject& asteroid){ asteroidStation(asteroid, spaceStation); }
+    ...
+        
+    typedef void (*HitFunctionPtr)(GameObject&, GameObject&);
+    typedef map< pair<string,string>, HitFunctionPtr > HitMap;
+    
+    pair<string,string> makeStringPair(const char *s1,const char *s2);
+    HitMap * initializeCollisionMap();
+    HitFunctionPtr lookup(const string& class1,
+    const string& class2);
+} //命名空间结束
+void processCollision(GameObject& object1,GameObject& object2)
+{
+    HitFunctionPtr phf = lookup(typeid(object1).name(),typeid(object2).name());
+    if (phf) 
+        phf(object1, object2);
+    else 
+        throw UnknownCollision(object1, object2);
+}
+
+namespace {
+    pair<string,string> makeStringPair(const char *s1,const char *s2){ return pair<string,string>(s1, s2); }
+}
+namespace {
+    HitMap * initializeCollisionMap()
+    {
+        HitMap *phm = new HitMap;
+        (*phm)[makeStringPair("SpaceShip","Asteroid")] =&shipAsteroid;
+        (*phm)[makeStringPair("SpaceShip", "SpaceStation")] =&shipStation;
+        ...
+        return phm;
+    }
+} 
+namespace {
+    HitFunctionPtr lookup(const string& class1,const string& class2)
+    {
+        static auto_ptr<HitMap>
+        collisionMap(initializeCollisionMap());
+        HitMap::iterator mapEntry=collisionMap->find(make_pair(class1, class2));
+        if (mapEntry == collisionMap->end()) return 0;
+        return (*mapEntry).second;
+    }
+}
+```
+
+
+
+## 杂项
+
+### 条款32：在未来时态下开发程序
+
+- 版本迭代带来程序的不断更新
+- 用户可能犯错，需要预防错误使用（限制用户的操作）
+- RTTI有利有弊，最大的弊端在于编译器无告警
+
+- 提供完备的类，预估未来可能需要的功能
+- 通用化代码，预防变化
+
+
+
+### 条款33：将非尾端类设计为抽象类
+
+- 若有实体类A、B，且希望B继承自A，应该另设抽象类C并令A、B继承自C【提高扩展性、鲁棒性、可读性】
+
+
+
+
+
