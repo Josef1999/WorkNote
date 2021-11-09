@@ -1,0 +1,154 @@
+# Effective Modern C++ 阅读笔记
+
+## 1.类型推导
+
+### 条款1：理解模板型别推导
+
+- 引用类型的实参会被当做非引用类型来处理，忽略其引用性
+- 对万能引用形参推导时，左值实参会进行特殊处理
+
+```C++
+template<typename T>
+void f(T&& param);
+
+int x=0;
+const int cx=x;
+const int& rx=x;
+f(x);	//左值，T的型别是int&，param的型别是int&
+f(cx);	//左值，T的型别是const int&，param的型别是const int&
+f(rx);	//左值，T的型别是const int&，param的型别是const int&
+```
+
+- 对按值传递的形参进行推导时，若实参型别中带有const或volatile饰词，则它们还是会被当作去除饰词的型别来处理
+- 在模板型别推导中，数组或函数型别的实参会退化成对应的指针，除非它们被用来初始化引用
+
+```C++
+template<typename T>
+void f(T param);
+
+const char name[] = "josefren";
+f(name);	//T的型别被推导为const char*;
+
+```
+
+```C++
+template<typename T>
+void f(T& param);
+
+const char name[] = "josefren";
+f(name);	//T的型别被推导为const char [13];
+
+template<typename T, std::size_t N>
+constexpr std::size_t arraySize(T (&)N) noexcept
+{
+    return N;
+}
+```
+
+### 条款2：理解auto型别推导
+
+- 与模板型别推导基本一致
+- 特例：
+
+```C++
+auto x1 = 27;	//int
+auto x2(27);	//int
+auto x3 = {27};	//std::initializer_list<int>
+auto x4{27};	//std::initializer_list<int>
+
+//auto假定用大括号括起的初始化表达式代表一个std::initializer_list，但模板型别推导不会
+```
+
+- 在函数返回值或lambda表达式中的形参中使用auto，表示使用模板型别推导而非auto型别推导
+
+
+
+### 条款3：理解decltype
+
+```c++
+//返回值型别尾序语法【指定返回值型别将在形参列表之后(在"->"之后)】
+template<typename Container, typename Index>
+auto authAndAccess(Container&& c, Index i)
+-> decltype(std::forward<Container>(c)[i])
+{
+    authenticateUser();
+    return std::forward<Container>(c)[i];
+}
+```
+
+```C++
+int x=0;
+decltype(x); 	//int
+decltype((x));	//int&
+```
+
+- 绝大多数情况下，decltype得出变量或表达式的型别而不作任何修改
+- 对于类型为T的左值表达式，除非该表达式仅有一个名字，decltype总是得出型别T&
+- C++14支持decltype（auto），和auto一样，它会从其初始化表达式出发来推导型别，但是他的型别推导使用的是decltype的规则
+
+
+
+### 条款4：掌握查看型别推导结果的方法
+
+- 编译器诊断信息
+
+  - ```c++
+    //构造模板类诱发错误消息
+    template<typename T>
+    class TD;
+    
+    const int val = 42;
+    auto x = val;
+    auto y = &val;
+    TD<decltype(x)> xType;
+    TD<decltype(y)> yType;
+    
+    ```
+
+- 运行时输出
+
+## 2.auto
+
+### 条款5：优先选用auto，而非显式型别声明
+
+- auto变量必须初始化，且与右值类型匹配，可避免兼容性和效率问题
+- auto可能影响程序可读性
+
+
+
+### 条款6：当auto推导的型别不符合要求时，使用带显式型别的初始化物习惯用法
+
+- “隐形”的代理型别可以导致auto根据初始化表达式推导出错误的型别
+- 带显示型别的初始化物习惯用法强制auto推导出你想要的型别
+
+```C++
+vector<bool> b(3);
+
+auto val = static_cast<bool>b[0];	//b[0]为std::vector<bool>::reference,vector对bool类型特化
+```
+
+
+
+## 3.转向现代C++
+
+### 条款7：在创建对象时之一区分()和{}
+
+- 大括号初始化可以应用的语境最为宽泛，可以阻止隐式窄化型别转换，还对最令人苦恼之解析语法免疫
+
+```C++
+//解析语法
+Widget w3();	//希望调用构造函数，却声明了函数
+```
+
+
+
+- 在构造函数重载决议期间，只要有任何可能，大括号初始化物就会与带有std::initializer_list型别的形参相匹配，即使其他重载版本有貌似更匹配的形参表
+- 使用小括号与大括号造成结果大相径庭的例子：
+
+```C++
+vector<int> v1(10,2);	//10个元素，全为2
+vector<int> v2{10,3};	//2个元素，10与3
+```
+
+- 在模板内容进行对象创建时，到底用小括号还是大括号会成为一个棘手问题
+
