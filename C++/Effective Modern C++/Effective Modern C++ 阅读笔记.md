@@ -152,3 +152,104 @@ vector<int> v2{10,3};	//2个元素，10与3
 
 - 在模板内容进行对象创建时，到底用小括号还是大括号会成为一个棘手问题
 
+
+
+### 条款8：优先选用nullptr，而非0或NULL
+
+- nullptr优化可读性，强调指针的存在
+- 避免在整形和指针类型之间重载
+
+
+
+### 条款9：优先选用别名声明，而非typedef
+
+- 别名声明在证明函数指针时可读性更佳
+
+```C++
+typedef void (*FP)(int, const string &);	//typedef
+
+using FP = void (*)(int, const string &);	//别名声明，可读性更优
+```
+
+- 别名声明可模板化，typedef不可
+
+```C++
+template<typename T>
+using MyAllocList = std::list<T, MyAlloc<T>>;
+
+```
+
+- 别名声明模板可免去"::type"后缀，且内嵌的typedef引用常被要求加上typename前缀
+
+
+
+### 条款10：优先选用限定作用域的枚举型别，而非不限作用域的枚举型别
+
+- C++98风格的枚举型别，现在称为不限范围的枚举型别
+
+```C++
+enum Color {black, white};	//C++98
+
+enum class Color {black, white};	//C++11
+```
+
+
+
+- 限定作用域的枚举型别尽在枚举型别内可见，它们只能通过强制型别转换以转换至其他型别
+- 限定作用域的枚举型别和不限范围的枚举型别都支持底层型别指定。
+- 限定作用于的枚举型别总是可以进行前置声明，而不限范围的枚举型别却只有在制定了默认底层型别的前提下才可以进行前置声明
+
+
+
+### 条款11：优先选用删除函数，而非private未定义函数
+
+```C++
+//两者等价
+class Example
+{
+    public:
+    	Example(const Example& e) = delete;	//C++先校验可访问性后校验删除状态，故为public
+    private:
+    	Example();
+}
+```
+
+- 任何函数可为删除函数
+
+- 删除函数可阻止不应进行的模板具现
+
+```C++
+template<typename T>
+void processPointer(T* ptr);
+
+template<>
+void processPointer(void* )=delete;
+template<>
+void processPointer(char* )=delete;
+```
+
+
+
+### 条款12：为意在改写的函数添加override声明
+
+- 成员函数引用饰词使得对于左值和右值对象的处理能够区分开来
+
+```C++
+class Widget{
+public:
+    using DataType = std::Vector<double>;
+    DataType& data() &	//左值Widget，返回左值
+    {
+        return values;
+    }
+    DataType data() &&	//右值Widget，返回右值
+    {
+        return std::move(values);
+    }
+private:
+   	DataType values;
+};
+```
+
+- 添加override声明可确保程序运行符合预期
+
