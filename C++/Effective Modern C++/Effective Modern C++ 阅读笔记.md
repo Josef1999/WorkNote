@@ -253,3 +253,50 @@ private:
 
 - 添加override声明可确保程序运行符合预期
 
+
+
+### 条款13：优先选用const_iterator，而非iterator
+
+- 使用const_iterator强调不进行值的修改
+- 在最通用的代码中，优先选用非成员函数版本的cbegin、cend，因为部分容器仅含begin、end
+
+
+
+### 条款14：只要函数不会发射异常，就为其加上noexcept声明
+
+- noexcept声明式函数接口的组成部分，意味着调用方可能对它有依赖
+- noexcept声明的函数有更多机会得到优化
+- noexcept性质对于移动操作、swap、函数释放函数和析构函数最有价值
+- 大多数函数都是异常终止的，不具备noexcept性质
+
+
+
+### 条款15：只有有可能使用constexpr，就使用它
+
+- constexpr对象
+  - 具有const属性
+  - 在编译期已知
+
+- constexpr函数
+
+  - 若实参皆为编译期已知，则结果也为编译期已知；否则与普通函数无异，结果为运行期已知
+
+  - ```C++
+    //C++11，constexpr函数内只可有一句可执行语句
+    constexpr int pow(int base, int exp) noexcept
+    {
+        return (exp==0? 1 : base * pow(base, exp-1));
+    }
+    
+    //C++14，限制放宽
+    constexpr int pow(int base, int exp) noexcept
+    {
+        auto result = 1;
+        for(int i=0; i<exp; i++)
+            	result *= base;
+        return result;
+    }
+    ```
+
+
+
