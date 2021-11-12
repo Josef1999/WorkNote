@@ -300,3 +300,76 @@ private:
 
 
 
+### 条款16：保证const成员函数的线程安全性
+
+- const具有只读的语义，需确保在并发时值不变
+- 运用std::atomic类型的变量会比运用互斥量提供更好的性能，但前者仅适用对单个变量或内存区域的操作
+
+
+
+### 条款17：理解特种成员函数的生成机制
+
+- 默认构造函数：仅当类中不含用户声明的构造函数时生成
+- 析构函数：默认为noexcept，仅当类中不含用户声明的构造函数时生成
+- 复制构造函数：仅当类中不含用户声明的复制构造函数时生成；若类中声明了移动操作，则默认复制构造函数将被删除；在已经存在复制赋值运算符或析构函数的条件下，仍然生成复制构造函数已经成为了被废弃的行为
+- 复制赋值运算符：仅当类中不含用户声明的复制赋值运算符时生成；若类中声明了移动操作，则默认复制构造函数将被删除；在已经存在复制构造函数或析构函数的条件下，仍然生成复制赋值运算符已经成为了被废弃的行为
+- 移动构造函数和移动赋值运算符：仅当类中不含用户声明的复制操作、移动操作和析构函数时才生成
+- 可用default关键字显式要求编译器生成默认构造函数
+
+```C++
+class Example
+{
+    public:
+    	~Example(){...}
+    	Example(const &Example rhs) = default;
+}
+```
+
+- 成员函数模板在任何情况下都不会抑制特种成员函数的生成
+
+
+
+## 4.智能指针
+
+### 条款18：使用std::unique_ptr管理具备专属所有权的资源
+
+- std::unique_ptr可转换为std::shared_ptr
+- 资源析构可以指定自定义删除器，使用自定义删除器会增加unique_ptr型别的对象尺寸
+
+```C++
+auto delInvmt = [](Investment * p)
+{
+    makeLogEntry(p);
+    delete p;
+}
+std::unique_ptr<Investment, decltype(delInvmt)> pInv(nullptr, delInvmt);
+```
+
+
+
+### 条款19：使用std::shared_ptr管理具备共享所有权的资源
+
+- std::shared_ptr的尺寸时裸指针的两倍，因为含有一个指涉到控制块的指针
+  - 控制块含有：引用计数、弱计数、其他数据（自定义删除器、分配器等）
+    - 控制块创建时机：std::make_shared、从unqiue_ptr出发构造一个shared_ptr时、使用裸指针构造shared_ptr时
+    - 避免将裸指针传递给shared_ptr构造函数（可能导致同一对象对应多控制块，造成未定义析构行为）
+- 引用计数的内存必须动态分配
+- 引用计数的递增和递减必须是原子操作
+- shared_ptr的自定义析构器与unique_ptr不同
+
+```C++
+auto delInvmt = [](Investment * p)
+{
+    makeLogEntry(p);
+    delete p;
+}
+std::unique_ptr<Investment, decltype(delInvmt)> upInv(nullptr, delInvmt);
+std::shared_ptr<Investment> sp(nullptr, delInvmt);
+```
+
+
+
+### 条款20：对于类似std::shared_ptr但有可能空悬的指针使用std::weak_ptr
+
+- weak_ptr可避免shared_ptr指针环路
+- weak_ptr可用于缓存、观察者列表
