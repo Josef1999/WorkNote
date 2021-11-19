@@ -2,7 +2,7 @@
 
 ## 1.类型推导
 
-### 条款1：理解模板型别推导
+### 条款1：理解模板类型推导
 
 - 引用类型的实参会被当做非引用类型来处理，忽略其引用性
 - 对万能引用形参推导时，左值实参会进行特殊处理
@@ -14,20 +14,20 @@ void f(T&& param);
 int x=0;
 const int cx=x;
 const int& rx=x;
-f(x);	//左值，T的型别是int&，param的型别是int&
-f(cx);	//左值，T的型别是const int&，param的型别是const int&
-f(rx);	//左值，T的型别是const int&，param的型别是const int&
+f(x);	//左值，T的类型是int&，param的类型是int&
+f(cx);	//左值，T的类型是const int&，param的类型是const int&
+f(rx);	//左值，T的类型是const int&，param的类型是const int&
 ```
 
-- 对按值传递的形参进行推导时，若实参型别中带有const或volatile饰词，则它们还是会被当作去除饰词的型别来处理
-- 在模板型别推导中，数组或函数型别的实参会退化成对应的指针，除非它们被用来初始化引用
+- 对按值传递的形参进行推导时，若实参类型中带有const或volatile饰词，则它们还是会被当作去除饰词的类型来处理
+- 在模板类型推导中，数组或函数类型的实参会退化成对应的指针，除非它们被用来初始化引用
 
 ```C++
 template<typename T>
 void f(T param);
 
 const char name[] = "josefren";
-f(name);	//T的型别被推导为const char*;
+f(name);	//T的类型被推导为const char*;
 
 ```
 
@@ -36,7 +36,7 @@ template<typename T>
 void f(T& param);
 
 const char name[] = "josefren";
-f(name);	//T的型别被推导为const char [13];
+f(name);	//T的类型被推导为const char [13];
 
 template<typename T, std::size_t N>
 constexpr std::size_t arraySize(T (&)N) noexcept
@@ -45,9 +45,9 @@ constexpr std::size_t arraySize(T (&)N) noexcept
 }
 ```
 
-### 条款2：理解auto型别推导
+### 条款2：理解auto类型推导
 
-- 与模板型别推导基本一致
+- 与模板类型推导基本一致
 - 特例：
 
 ```C++
@@ -56,17 +56,17 @@ auto x2(27);	//int
 auto x3 = {27};	//std::initializer_list<int>
 auto x4{27};	//std::initializer_list<int>
 
-//auto假定用大括号括起的初始化表达式代表一个std::initializer_list，但模板型别推导不会
+//auto假定用大括号括起的初始化表达式代表一个std::initializer_list，但模板类型推导不会
 ```
 
-- 在函数返回值或lambda表达式中的形参中使用auto，表示使用模板型别推导而非auto型别推导
+- 在函数返回值或lambda表达式中的形参中使用auto，表示使用模板类型推导而非auto类型推导
 
 
 
 ### 条款3：理解decltype
 
 ```c++
-//返回值型别尾序语法【指定返回值型别将在形参列表之后(在"->"之后)】
+//返回值类型尾序语法【指定返回值类型将在形参列表之后(在"->"之后)】
 template<typename Container, typename Index>
 auto authAndAccess(Container&& c, Index i)
 -> decltype(std::forward<Container>(c)[i])
@@ -82,13 +82,13 @@ decltype(x); 	//int
 decltype((x));	//int&
 ```
 
-- 绝大多数情况下，decltype得出变量或表达式的型别而不作任何修改
-- 对于类型为T的左值表达式，除非该表达式仅有一个名字，decltype总是得出型别T&
-- C++14支持decltype（auto），和auto一样，它会从其初始化表达式出发来推导型别，但是他的型别推导使用的是decltype的规则
+- 绝大多数情况下，decltype得出变量或表达式的类型而不作任何修改
+- 对于类型为T的左值表达式，除非该表达式仅有一个名字，decltype总是得出类型T&
+- C++14支持decltype（auto），和auto一样，它会从其初始化表达式出发来推导类型，但是他的类型推导使用的是decltype的规则
 
 
 
-### 条款4：掌握查看型别推导结果的方法
+### 条款4：掌握查看类型推导结果的方法
 
 - 编译器诊断信息
 
@@ -109,17 +109,17 @@ decltype((x));	//int&
 
 ## 2.auto
 
-### 条款5：优先选用auto，而非显式型别声明
+### 条款5：优先选用auto，而非显式类型声明
 
 - auto变量必须初始化，且与右值类型匹配，可避免兼容性和效率问题
 - auto可能影响程序可读性
 
 
 
-### 条款6：当auto推导的型别不符合要求时，使用带显式型别的初始化物习惯用法
+### 条款6：当auto推导的类型不符合要求时，使用带显式类型的初始化物习惯用法
 
-- “隐形”的代理型别可以导致auto根据初始化表达式推导出错误的型别
-- 带显示型别的初始化物习惯用法强制auto推导出你想要的型别
+- “隐形”的代理类型可以导致auto根据初始化表达式推导出错误的类型
+- 带显示类型的初始化物习惯用法强制auto推导出你想要的类型
 
 ```C++
 vector<bool> b(3);
@@ -133,7 +133,7 @@ auto val = static_cast<bool>b[0];	//b[0]为std::vector<bool>::reference,vector�
 
 ### 条款7：在创建对象时之一区分()和{}
 
-- 大括号初始化可以应用的语境最为宽泛，可以阻止隐式窄化型别转换，还对最令人苦恼之解析语法免疫
+- 大括号初始化可以应用的语境最为宽泛，可以阻止隐式窄化类型转换，还对最令人苦恼之解析语法免疫
 
 ```C++
 //解析语法
@@ -142,7 +142,7 @@ Widget w3();	//希望调用构造函数，却声明了函数
 
 
 
-- 在构造函数重载决议期间，只要有任何可能，大括号初始化物就会与带有std::initializer_list型别的形参相匹配，即使其他重载版本有貌似更匹配的形参表
+- 在构造函数重载决议期间，只要有任何可能，大括号初始化物就会与带有std::initializer_list类型的形参相匹配，即使其他重载版本有貌似更匹配的形参表
 - 使用小括号与大括号造成结果大相径庭的例子：
 
 ```C++
@@ -176,16 +176,15 @@ using FP = void (*)(int, const string &);	//别名声明，可读性更优
 ```C++
 template<typename T>
 using MyAllocList = std::list<T, MyAlloc<T>>;
-
 ```
 
 - 别名声明模板可免去"::type"后缀，且内嵌的typedef引用常被要求加上typename前缀
 
 
 
-### 条款10：优先选用限定作用域的枚举型别，而非不限作用域的枚举型别
+### 条款10：优先选用限定作用域的枚举类型，而非不限作用域的枚举类型
 
-- C++98风格的枚举型别，现在称为不限范围的枚举型别
+- C++98风格的枚举类型，现在称为不限范围的枚举类型
 
 ```C++
 enum Color {black, white};	//C++98
@@ -195,9 +194,9 @@ enum class Color {black, white};	//C++11
 
 
 
-- 限定作用域的枚举型别尽在枚举型别内可见，它们只能通过强制型别转换以转换至其他型别
-- 限定作用域的枚举型别和不限范围的枚举型别都支持底层型别指定。
-- 限定作用于的枚举型别总是可以进行前置声明，而不限范围的枚举型别却只有在制定了默认底层型别的前提下才可以进行前置声明
+- 限定作用域的枚举类型尽在枚举类型内可见，它们只能通过强制类型转换以转换至其他类型
+- 限定作用域的枚举类型和不限范围的枚举类型都支持底层类型指定。
+- 限定作用于的枚举类型总是可以进行前置声明，而不限范围的枚举类型却只有在制定了默认底层类型的前提下才可以进行前置声明
 
 
 
@@ -334,7 +333,7 @@ class Example
 ### 条款18：使用std::unique_ptr管理具备专属所有权的资源
 
 - std::unique_ptr可转换为std::shared_ptr
-- 资源析构可以指定自定义删除器，使用自定义删除器会增加unique_ptr型别的对象尺寸
+- 资源析构可以指定自定义删除器，使用自定义删除器会增加unique_ptr类型的对象尺寸
 
 ```C++
 auto delInvmt = [](Investment * p)
@@ -373,3 +372,133 @@ std::shared_ptr<Investment> sp(nullptr, delInvmt);
 
 - weak_ptr可避免shared_ptr指针环路
 - weak_ptr可用于缓存、观察者列表
+
+
+
+### 条款21：优先选用std::make_unique和std::make_shared，而非直接使用new
+
+- 可用C++版本：
+  - make_unique：C++14起
+  - make_shared：C++11起
+- make系列函数会把一个任意实参集合完美转发给动态分配内存的对象的构造函数，并返回一个涉及该对象的智能指针
+- make系列函数消除了重复代码、改进了异常安全性、并且对于make_shared和allocated_shared而言，目标代码尺寸会更小、速度会更快
+- 不适用于make系列函数的场景：
+  - 需要定制删除其
+  - 期望直接传递大括号初始化物
+- 对于shared_ptr不建议使用make系列函数的额外场景：
+  - 自定义内存管理的类
+  - 内存紧张的系统、非常大的对象
+  - 存在比指涉到相同对象的shared_ptr生存期更久的weak_ptr
+
+```C++
+auto upw1(std::make_unique<Widget>());		//出现一次对象类别，一次内存分配
+
+std::unique_ptr<Widget> upw2(new Widget);	//出现两次对象类别，增加代码冗余，增加代码缺陷可能性，两次内存分配
+```
+
+
+
+### 条款22：使用Pimpl习惯用法时，将特殊成员函数的定义放到实现文件中
+
+```C++
+//Widget.h中
+class Widget {
+public:
+    Widget();
+    ~Widget();  //声明析构函数
+    Widget(const Widget&& w);  //声明移动构造函数
+    Widget& operator=(const Widget&& w);  //声明移动赋值函数
+private:
+    class Impl;                 //声明结构体或类
+    std::unique_ptr<Impl> pImpl; //声明指涉到它的指针
+};
+
+
+//Widget.cpp中
+#include "Widget.h"
+#include "Impl.h"  //在实现文件内包含Impl的头文件
+
+Widget::Widget():pImpl(std::make_unique<Impl>()){
+
+}
+
+//在实现文件内使用默认析构及移动操作
+Widget::~Widget() = default;
+Widget::Widget(const Widget&& w) = default;
+Widget& Widget::operator=(const Widget&& w)= default;
+
+
+//main.cpp
+#include "Widget.h"
+int main()
+{
+    Widget w;   //编译通过
+}	
+
+```
+
+- 对于采用unique_ptr实现的Pimlp指针，必须在类的头文件中声明特种成员函数，但在cpp文件中实现，即使默认函数实现有着正确行为也必须这样做（原因见下条）
+- 若使用shared_ptr则无需遵顼此条款，因为shared_pt于unique_ptr对于自定义析构器的支持不同
+  - 对unique_ptr而言，析构器类别是智能指针类型的一部分，这使得编译器产生更小的数据结构以及更快的运行速度，但要求其指涉到的类型必须是完整类型
+  - shared_ptr于unique_ptr正好相反
+
+
+
+## 5.右值引用、移动语义和完美转发
+
+### 条款23：理解std::move和std::forward
+
+- std::move不进行任何移动，std::forward不进行任何转发，在运行期它们不做任何操作
+  - std::move无条件将实参强制转换成右值（不保证返回值具有可移动性）
+  - std::forward仅在其实参是通过右值完成初始化时才将实参强制转换成右值
+
+- 针对常量对象执行的移动操作将变换成复制操作
+
+- 理论上可弃用std::forward，只用std::forward，但实际应用于理论相悖
+  - std::move之取用一个实参，std::forward需取用一个实参和一个模板类型实参
+
+
+
+### 条款24：区分万能引用和右值引用
+
+```C++
+//万能引用，必涉及类型推导
+template<typename T>
+void f(T&& param);
+auto&& var2 = var1;
+
+//右值引用
+void f(Widget&& param);
+Widget&& var2 = Widget();
+```
+
+- 万能引用形式固定：T&& 或 auto&&，不可存在const饰词
+
+- 模板内存在T&&的函数形参不一定代表它就是万能引用
+
+  - T可能依赖示例的具现实现
+
+  - ```C++
+    template<class T>
+    class vector{
+        public:
+        	void push_back(T&& x);
+    }
+    
+    vector<Widget> v;
+    
+    template<Widget T>
+    class vector{
+        public:
+        	void push_back(Widget&& x);
+    }
+    ```
+
+
+
+### 条款25：针对右值引用实施std::move,针对万能引用实施std::forward
+
+- 针对右值引用的最后一次使用实施std::move，针对万能引用的最后一次使用实施std::forward
+- 若局部对象可能适用于返回值优化（RVO，return value optimization），请勿针对其实施std::move或std::forward
+  - RVO标准：编译器若要在一个按值返回的函数里省略对局部对象的复制，则需要满足两个前提条件：1.局部对象类型于函数返回值类型相同；2.返回的就是局部对象本身
+
