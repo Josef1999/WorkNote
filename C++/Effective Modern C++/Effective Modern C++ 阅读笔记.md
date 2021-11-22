@@ -502,3 +502,109 @@ Widget&& var2 = Widget();
 - 若局部对象可能适用于返回值优化（RVO，return value optimization），请勿针对其实施std::move或std::forward
   - RVO标准：编译器若要在一个按值返回的函数里省略对局部对象的复制，则需要满足两个前提条件：1.局部对象类型于函数返回值类型相同；2.返回的就是局部对象本身
 
+
+
+### 条款26：避免依万能引用类型进行重载
+
+- 把万能引用作为重载候选类型，几乎总会使它在始料未及的情况下被调用
+- 完美转发构造函数的问题尤其严重，因为对于非常量的左值类型而言，它们一般都会形成相对于复制构造函数的更佳匹配，并且还会劫持派生类中对基类的复制和移动构造函数的调用
+
+
+
+### 条款27：熟悉依万能引用类型进行重载的替代方案
+
+- 传值
+
+  - 当确定肯定需要复制形参时
+
+- 标签分派
+
+  - ```C++
+    template<typename T>
+    void logAndAdd(T&& name)
+    {
+        logAndAddImpl(std::forward<T>(name), std::is_integral<typename std::remove_reference<T>::type>());
+        
+    }
+    
+    template<typename T>
+    void logAndAddImpl(T&& name, std::false_type)
+    {
+        ...
+    }
+    
+    template<typename T>
+    void logAndAddImpl(int idx, std::true_type)
+    {
+        ...
+    }
+    ```
+
+- 使用std::enable_if限制模板
+  - ```C++
+    class Person{
+        public:
+        	//限制模板推导条件
+        	template<typename T,
+        			 typename = typename std::enable_if<!std::is_base_of<Person, typename std::deacy<T>::type>::value>::type>
+            explicit Person(T&& n);
+    }
+    ```
+
+
+
+### 条款28：理解引用折叠
+
+- 引用折叠：任一引用为左值引用，则结果为左值引用，否则为右值引用
+  - 发生语境：模板实例化、auto‘类型生成、创建和引用typedef与别名声明、decltype
+
+
+
+### 条款29：假定移动操作不存在、成本高、未使用
+
+- std::array的数据存储在栈上，移动和复制一样需要线性时间复杂度
+- 许多std::string的实现采用了SSO（小型字符串优化）——小型字符串会存储在std::string对象内的某个缓冲区内（栈上），导致移动并不比复制更快
+
+- 若已知类的移动语义支持情况，则无需作以上假定
+
+
+
+### 条款30：熟悉完美转发的失败情形
+
+**定义：直接调用目标函数的执行结果与通过转发函数调用目标函数的结果不同，即为完美转发失败**
+
+- 大括号初始化物
+
+  - 形参未声明为std::initializer_list，编译器被禁止从它触发推导类型
+
+  - 解决方法：使用自动变量
+
+  - ```C++
+    auto il = {1,2,3};
+    fwd(il);
+    ```
+
+- 0和NULL用作空指针
+  - 解决方法：使用nullptr
+
+- 仅有声明的整形static const成员变量
+
+  - 编译器绕过缺少定义的事实，直接将值填入所有提及处（类似宏定义），但在取地址时将失败（引用与指针本质上相同）
+  - 解决方法：提供定义
+
+- 重载的函数名字和模板名字
+
+  - 编译器无法获知所要求的是哪个函数（缺少类型）
+
+  - 解决方法：手动指定函数的重载版本
+
+  - ```C++
+    using ProcessFuncTYpe = int(*)(int);
+    ProcessFuncTYpe processValPtr = processVal;
+    fwd(processValPtr);
+    ```
+
+- 位域
+
+  - 位域是由机器字的若干任意部分组成的，无法直接对其取值，故编译器规定”非const引用不得绑定到位域“
+  - 解决方法：使用自动变量
