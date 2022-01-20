@@ -608,3 +608,181 @@ Widget&& var2 = Widget();
 
   - 位域是由机器字的若干任意部分组成的，无法直接对其取值，故编译器规定”非const引用不得绑定到位域“
   - 解决方法：使用自动变量
+
+
+
+## 6.lambda表达式
+
+### 条款31：避免默认捕获模式
+
+- lambda捕获只针对其作用域内可见的非静态局部变量
+
+- 避免默认引用捕获模式
+  - 原因：lambda表达式生存期可能大于引用，导致访问空悬引用
+- 避免默认按值捕获模式
+  - 原因：按值捕获的指针可能空悬；捕获的成员变量隐含this指针；造成可读性问题：误以为static可捕获
+
+
+
+### 条款32：使用初始化捕获将对象移入闭包
+
+**初始化捕获==广义lambda捕获**
+
+
+
+```C++
+//C++14 广义lambda捕获
+auto func = [data = std::move(data)]{...};
+
+//C++11 模拟广义lambda捕获
+auto func = std::bind([](const vector<int> &data){...}, std::move(data));
+
+//std::bind返回绑定对象，首个形参为可调用对象，后续所有形参为传递给可调用对象的参数；绑定对象内：对每个左值实参复制构造，对每个右值形参移动构造
+```
+
+
+
+### 条款33：对auto&&类型的形参使用decltype，以std::forward之
+
+```C++
+auto f = [](auto&& param){
+    return func(std::forward<decltype(param)>(param));
+};
+```
+
+
+
+### 条款34：优先选用lambda式，而非std::bind
+
+- lambda式具有更好的可读性、表达力、运行效率
+
+
+
+## 7.并发API
+
+### 条款35：优先选用基于任务而非基于线程的程序设计
+
+```C++
+int doAsyncWork();
+
+//基于线程
+std::thread t(doAsyncWork);
+//基于任务
+auto fut = std::async(doAsyncWork);
+```
+
+- std::thread的API未提供直接获取异步运行函数返回值的途径，且程序会因异常抛出而终止
+- std::async自动管理线程耗尽、超订、负载均衡以及平台适配等问题
+
+
+
+### 条款36：如果异步是必要的，则指定std::launch::async
+
+- std::async具有两种启动策略: std::launch::async（异步），std::launch::deffered（同步），默认启动策略为随机二选一
+
+
+
+### 条款37：使std::thread类型对象在所有路径都不可联结（joinable）
+
+- 一个可join的std::thread在被析构时会导致程序被终止
+
+  - 析构时调用join可能导致难以调试的性能异常
+  - 析构时调用detach可能导致难以调试的未定义行为
+
+- 解决方案：自实现RAII对象
+
+  - ```C++
+    class ThreadRAII	
+    {
+    public:
+     using RAIIAction =
+      void(std::thread::*)();
+     
+     ThreadRAII(std::thread&& t, RAIIAction action)
+      :action(action), t(std::move(t))
+     {}
+     
+     ~ThreadRAII()
+     {
+      if (t.joinable())
+       (t.*action)();
+     }
+     
+     std::thread& get(){ return t; }
+    private:
+     RAIIAction action;
+     std::thread t;
+    };
+    ```
+
+
+
+### 条款38：暂时跳过
+
+
+
+### 条款39：暂时跳过
+
+
+
+### 条款40：暂时跳过
+
+
+
+## 8.微调
+
+### 条款41：针对可复制的形参，在移动成本低并且一定会被复制的前提下，考虑将其按值传递
+
+- 重载
+
+  - ```C++
+    class Widget{
+        public:
+        	void addName(const std::string& newName)
+            {	names.push_back(newName);}
+        	void addName(std::string&& newName)
+            {	names.push_back(std::move(newName);}
+    }
+    ```
+
+  - 左值 一次复制，右值 一次移动
+
+  - 可维护性差
+
+- 万能引用
+
+  - ```C++
+    class Widget{
+        public:
+        	template<typename T>
+        	void addName(T&& newName)
+            {	names.push_back(std::forward<T>(newName);}
+    }
+    ```
+
+  - 左值 一次复制，右值 一次移动
+
+  - 用户需传递正确实参类型
+
+- 传值
+
+  - ```C++
+    class Widget{
+        public:
+        	void addName(std::string newName)
+            {	names.push_back(std::move(newName);}
+    }
+    ```
+
+  - 左值 一次复制+一次移动，右值 一次移动+一次移动
+
+  - 存在额外成本，存在切片问题（不适用于传递基类类型）
+
+
+
+### 条款42：考虑置入而非插入
+
+- 用emplace_back替代push_back
+  - 好处：避免临时对象的创建和析构，提升效率
+  - 坏处：可能执行插入函数中会被拒绝的类型转换
+
