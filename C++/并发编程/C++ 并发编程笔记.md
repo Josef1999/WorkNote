@@ -167,3 +167,154 @@ void thread_func()
 #### 保护不常更新的数据结构
 
 针对多读少写场景，可使用读写锁（C++17提供std::shared_mutex & std::shared_timed_mutex）
+
+
+
+## 同步操作
+
+### 使用condition_variable
+
+等待条件完成
+
+```C++
+#include <condition_variable>
+std::condition_variable data_cond;
+std::mutex mut;
+std::queue<data_chunk> data_queue; 
+void data_preparation_thread()
+{
+    while (more_data_to_prepare())
+    {
+        data_chunk const data = prepare_data();
+        std::lock_guard<std::mutex> lk(mut);
+        data_queue.push(data);  
+        data_cond.notify_one(); 
+    }
+}
+void data_processing_thread()
+{
+    while (true)
+    {
+        std::unique_lock<std::mutex> lk(mut); 
+        data_cond.wait(
+            lk, []
+            { return !data_queue.empty(); }); 
+        data_chunk data = data_queue.front();
+        data_queue.pop();
+        lk.unlock(); // 6
+        process(data);
+        if (is_last_chunk(data))
+            break;
+    }
+}
+```
+
+
+
+### 使用future
+
+future可配合async使用
+
+async将返回一个包含函数返回值的future
+
+```C++
+#include <future>
+#include <iostream>
+int find_the_answer_to_ltuae();
+void do_other_stuff();
+int main()
+{
+    std::future<int> the_answer = std::async(find_the_answer_to_ltuae);
+    do_other_stuff();
+    std::cout << "The answer is " << the_answer.get() << std::endl;
+}
+```
+
+```C++
+#include <string>
+#include <future>
+
+struct X
+{
+    void foo(int, std::string const &);
+    std::string bar(std::string const &);
+};
+X x;
+auto f1 = std::async(&X::foo, &x, 42, "hello");        // 调用p->foo(42, "hello")，p是指向x的指针 
+auto f2 = std::async(&X::bar, x, "goodbye"); // 调用tmpx.bar("goodbye")， tmpx是 x的拷贝副本
+
+struct Y
+{
+    double operator()(double);
+};
+Y y;
+auto f3 = std::async(Y(), 3.141);         // 调用tmpy(3.141)，tmpy通过Y的移动构造函数得到
+auto f4 = std::async(std::ref(y), 2.718); // 调用y(2.718)
+X baz(X &);
+auto f5 = std::async(baz, std::ref(x)); // 调用baz(x)
+
+class move_only
+{
+public:
+    move_only();
+    move_only(move_only &&);
+    move_only(move_only const &) = delete;
+    move_only &operator=(move_only &&);
+    move_only &operator=(move_only const &) = delete;
+    void operator()();
+};
+auto f6 = std::async(move_only()); // 调用tmp()，tmp是通过std::move(move_only()) 构造得到
+```
+
+async可传入额外参数
+
+```C++
+auto f7 = std::async(std::launch::async, Y(), 1.2);            // 在新线程上执行
+auto f8 = std::async(std::launch::deferred, baz, std::ref(x)); // 在wait()或get()调用时执行
+auto f9 = std::async(
+    std::launch::deferred | std::launch::async,
+    baz, std::ref(x)); // 实现选择执行方式
+auto f10 = std::async(baz, std::ref(x));
+f8.wait(); // 调用延迟函数
+```
+
+future可配合packaged_task使用
+
+```C++
+#include <deque>
+#include <mutex>
+#include <future>
+#include <thread>
+#include <utility>
+std::mutex m;
+std::deque<std::packaged_task<void()>> tasks;
+bool gui_shutdown_message_received();
+void get_and_process_gui_message();
+void gui_thread() 
+{
+    while (!gui_shutdown_message_received()) 
+    {
+        get_and_process_gui_message(); 
+        std::packaged_task<void()> task;
+        {
+            std::lock_guard<std::mutex> lk(m);
+            if (tasks.empty()) 
+                continue;
+            task = std::move(tasks.front());
+            tasks.pop_front();
+        }
+        task(); 
+    }
+}
+std::thread gui_bg_thread(gui_thread);
+template <typename Func>
+std::future<void> post_task_for_gui_thread(Func f)
+{
+    std::packaged_task<void()> task(f);        
+    std::future<void> res = task.get_future(); 
+    std::lock_guard<std::mutex> lk(m);
+    tasks.push_back(std::move(task));
+    return res;                       
+}
+```
+
