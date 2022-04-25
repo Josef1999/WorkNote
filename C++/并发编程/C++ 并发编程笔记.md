@@ -318,3 +318,4 @@ std::future<void> post_task_for_gui_thread(Func f)
 }
 ```
 
+shared_future可以让多个线程等待同一事件，且它可拷贝，通过让每个线程都拥有shared_future对象来获取结果可确保共享同步结果是安全的。
